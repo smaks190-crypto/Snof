@@ -316,4 +316,5 @@ fun AnnualReportScreen(
             modifier = Modifier.weight(1f)
         )
     }
+  }
 }
