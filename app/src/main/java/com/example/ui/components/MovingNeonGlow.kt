@@ -15,7 +15,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
-import com.example.ui.theme.Emerald400
 import com.example.ui.theme.Rose500
 
 @Composable
@@ -34,12 +33,11 @@ fun MovingNeonGlow(
         label = "neon_glow_alpha"
     )
 
-    // Усиливаем чувствительность к громкости голоса, чтобы реакция была отчетливой
-    val boostedAmp = (amplitude * 3.0f).coerceIn(0f, 1f)
-
-    val smoothedAmplitude by animateFloatAsState(
+    // Усиливаем чувствительность к громкости речи (х3.5)
+    val boostedAmp = (amplitude * 3.5f).coerceIn(0f, 1f)
+    val smoothedAmp by animateFloatAsState(
         targetValue = boostedAmp,
-        animationSpec = tween(70),
+        animationSpec = tween(80),
         label = "smoothed_amplitude"
     )
 
@@ -51,48 +49,52 @@ fun MovingNeonGlow(
             Canvas(
                 modifier = Modifier.matchParentSize()
             ) {
-                // Выносим контур свечения ЗА ПРЕДЕЛЫ темного фона плашки
-                val extraPadding = (6f + smoothedAmplitude * 14f).dp.toPx()
-                val rectLeft = -extraPadding
-                val rectTop = -extraPadding
-                val rectRight = size.width + extraPadding
-                val rectBottom = size.height + extraPadding
+                // ВЫНОСИМ ОРЕОЛ НАРУЖУ: рисуем за пределами границ плашки,
+                // чтобы тёмный фон плашки её не перекрывал.
+                // Размеры самой плашки в интерфейсе остаются неизменными.
+                val glowOffset = (3f + smoothedAmp * 10f).dp.toPx()
+                val rectLeft = -glowOffset
+                val rectTop = -glowOffset
+                val rectRight = size.width + glowOffset
+                val rectBottom = size.height + glowOffset
 
                 val capsulePath = Path().apply {
                     addRoundRect(
                         RoundRect(
                             rect = Rect(rectLeft, rectTop, rectRight, rectBottom),
-                            cornerRadius = CornerRadius((cornerRadiusDp + 6f).dp.toPx())
+                            cornerRadius = CornerRadius((cornerRadiusDp + 4f).dp.toPx())
                         )
                     )
                 }
 
-                // В тишине свечение видно на 20%, при разговоре раскрывается до 100%
-                val intensity = (0.20f + smoothedAmplitude * 0.80f) * glowAlpha
+                val intensity = (0.25f + smoothedAmp * 0.75f) * glowAlpha
 
-                // 1. Внешний рассеянный неоновый ореол
+                // 1. Внешнее мягкое неоновое свечение вокруг плашки
                 drawPath(
                     path = capsulePath,
-                    color = Emerald400.copy(alpha = intensity * 0.4f),
-                    style = Stroke(width = (8f + smoothedAmplitude * 16f).dp.toPx())
+                    color = Rose500.copy(alpha = intensity * 0.35f),
+                    style = Stroke(width = (5f + smoothedAmp * 12f).dp.toPx())
                 )
 
-                // 2. Средний яркий контур
+                // 2. Четкая контурная линия
                 drawPath(
                     path = capsulePath,
-                    color = Rose500.copy(alpha = intensity * 0.75f),
-                    style = Stroke(width = (3f + smoothedAmplitude * 8f).dp.toPx())
+                    color = Rose500.copy(alpha = intensity * 0.85f),
+                    style = Stroke(width = (2f + smoothedAmp * 4f).dp.toPx())
                 )
 
-                // 3. Яркая сердцевина
-                drawPath(
-                    path = capsulePath,
-                    color = Color.White.copy(alpha = intensity * 0.9f),
-                    style = Stroke(width = (1f + smoothedAmplitude * 2f).dp.toPx())
-                )
+                // 3. Белый всплеск-блик при произнесении слов
+                if (smoothedAmp > 0.08f) {
+                    drawPath(
+                        path = capsulePath,
+                        color = Color.White.copy(alpha = smoothedAmp * 0.75f * glowAlpha),
+                        style = Stroke(width = (1f + smoothedAmp * 2f).dp.toPx())
+                    )
+                }
             }
         }
 
+        // Черная плашка
         content()
     }
 }
