@@ -131,6 +131,23 @@ fun VoiceRecordingOverlay(
     val normalizedAmplitude = remember(rmsDb) {
         (rmsDb / 12f).coerceIn(0f, 1f)
     }
+
+    var amplitudes by remember { mutableStateOf(List(32) { 0.08f }) }
+
+    LaunchedEffect(rmsDb, isListening) {
+        if (isListening) {
+            val norm = (rmsDb / 12f).coerceIn(0.08f, 1f)
+            val newList = amplitudes.toMutableList()
+            if (newList.size >= 32) {
+                newList.removeAt(0)
+            }
+            newList.add(norm)
+            amplitudes = newList
+        } else {
+            amplitudes = List(32) { 0.05f }
+        }
+    }
+
     val voskStatus by voiceManager.voskStatus.collectAsState()
     val voskProgress by voiceManager.voskProgress.collectAsState()
 
@@ -365,7 +382,7 @@ fun VoiceRecordingOverlay(
                 baseHeight.coerceIn(240f, screenHeightDp - 60f)
             }
         }
-        isVoiceActive -> 56f
+        isVoiceActive -> 68f
         else -> 56f
     }
 
@@ -717,7 +734,7 @@ fun VoiceRecordingOverlay(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(56.dp),
+                                        .height(if (isVoiceActive) 68.dp else 56.dp),
                                     contentAlignment = Alignment.CenterEnd
                                 ) {
                                     AnimatedVisibility(
@@ -731,7 +748,7 @@ fun VoiceRecordingOverlay(
                                         Box(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .height(56.dp)
+                                                .height(68.dp)
                                                 .clickable { viewModel.stopVoiceRecordingAndProcess() },
                                             contentAlignment = Alignment.Center
                                         ) {
@@ -756,7 +773,8 @@ fun VoiceRecordingOverlay(
                                             } else {
                                                 Column(
                                                     horizontalAlignment = Alignment.CenterHorizontally,
-                                                    verticalArrangement = Arrangement.Center
+                                                    verticalArrangement = Arrangement.Center,
+                                                    modifier = Modifier.padding(vertical = 2.dp)
                                                 ) {
                                                     Row(
                                                         verticalAlignment = Alignment.CenterVertically,
@@ -767,9 +785,9 @@ fun VoiceRecordingOverlay(
                                                                 imageVector = Icons.Default.Lock,
                                                                 contentDescription = "Зафиксировано",
                                                                 tint = Rose500,
-                                                                modifier = Modifier.size(14.dp)
+                                                                modifier = Modifier.size(12.dp)
                                                             )
-                                                            Spacer(modifier = Modifier.width(6.dp))
+                                                            Spacer(modifier = Modifier.width(4.dp))
                                                         }
                                                         val statusText = when (voskStatus) {
                                                             "DOWNLOADING" -> {
@@ -780,21 +798,23 @@ fun VoiceRecordingOverlay(
                                                             else -> "Слушаю..."
                                                         }
                                                         Text(
-                                                            text = statusText,
+                                                            text = statusText.uppercase(),
                                                             color = if (voskStatus == "DOWNLOADING" || voskStatus == "EXTRACTING") Emerald400 else Rose500,
-                                                            fontSize = 13.sp,
+                                                            fontSize = 10.sp,
                                                             fontWeight = FontWeight.Bold,
-                                                            modifier = Modifier.padding(vertical = 4.dp)
+                                                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                                            letterSpacing = 0.8.sp
                                                         )
                                                     }
 
-                                                    VisualizerView(
-                                                        rmsDb = rmsDb,
-                                                        isRecording = isListening || isVoiceActive,
-                                                        height = 36.dp,
+                                                    Spacer(modifier = Modifier.height(2.dp))
+
+                                                    VoiceWaveCanvas(
+                                                        amplitudes = amplitudes,
                                                         modifier = Modifier
                                                             .fillMaxWidth()
-                                                            .padding(horizontal = 12.dp, vertical = 2.dp)
+                                                            .height(20.dp)
+                                                            .padding(horizontal = 4.dp)
                                                     )
 
                                                     if (activeText.isNotBlank() && !isListening) {
