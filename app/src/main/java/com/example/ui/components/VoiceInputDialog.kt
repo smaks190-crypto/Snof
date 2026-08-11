@@ -788,6 +788,15 @@ fun VoiceRecordingOverlay(
                                                         )
                                                     }
 
+                                                    VisualizerView(
+                                                        rmsDb = rmsDb,
+                                                        isRecording = isListening || isVoiceActive,
+                                                        height = 36.dp,
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .padding(horizontal = 12.dp, vertical = 2.dp)
+                                                    )
+
                                                     if (activeText.isNotBlank() && !isListening) {
                                                         Spacer(modifier = Modifier.height(2.dp))
                                                         Text(

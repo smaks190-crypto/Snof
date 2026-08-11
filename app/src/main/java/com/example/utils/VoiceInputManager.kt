@@ -2,12 +2,12 @@ package com.example.utils
 
 import android.content.Context
 import android.content.Intent
+import android.media.AudioFormat
+import android.media.AudioRecord
+import android.media.MediaRecorder
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.speech.RecognitionListener as SystemRecognitionListener
-import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer as SystemSpeechRecognizer
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,10 +28,11 @@ import java.net.URL
 import java.util.zip.ZipInputStream
 
 class VoiceInputManager(private val context: Context) {
-    private var systemSpeechRecognizer: SystemSpeechRecognizer? = null
     private var voskModel: Model? = null
     private var voskRecognizer: Recognizer? = null
     private var voskSpeechService: SpeechService? = null
+    @Volatile private var isAudioRecording = false
+    private var audioRecordThread: Thread? = null
     private val mainHandler = Handler(Looper.getMainLooper())
 
     private val _isListening = MutableStateFlow(false)
@@ -187,14 +188,19 @@ class VoiceInputManager(private val context: Context) {
             } catch (e: Exception) {
                 _voskStatus.value = "ERROR"
                 _voskProgress.value = null
-                _errorState.value = "Не удалось загрузить офлайн-модель: ${e.localizedMessage}"
+                _errorState.value = "Не удалось загрузить офлайн-модель VOSK: ${e.localizedMessage}"
                 Log.e("VoiceInputManager", "Vosk download error", e)
-                withContext(Dispatchers.Main) {
-                    // Fallback to system speech recognition
-                    startSystemSpeechRecognizer(callerContext)
-                }
             }
         }
+    }
+
+    private fun stopAudioThread() {
+        isAudioRecording = false
+        try {
+            audioRecordThread?.interrupt()
+            audioRecordThread = null
+        } catch (_: Throwable) {}
+        _rmsDb.value = 0f
     }
 
     private fun initVoskAndStart(callerContext: Context) {
@@ -208,191 +214,85 @@ class VoiceInputManager(private val context: Context) {
                 voskRecognizer = Recognizer(voskModel, 16000f)
             }
 
-            voskSpeechService?.stop()
-            val service = SpeechService(voskRecognizer, 16000f)
-            voskSpeechService = service
+            stopAudioThread()
 
-            service.startListening(object : VoskRecognitionListener {
-                override fun onResult(hypothesis: String) {
-                    if (!isProcessingAllowed) return
-                    val text = parseResultHypothesis(hypothesis).trim()
-                    if (text.isNotBlank() && text != lastProcessedChunk) {
-                        lastProcessedChunk = text
-                        GlobalConsoleLogger.d("VOSK", "Распознан фрагмент: «$text»")
-                        _recognizedText.value = text
-                        _partialText.value = ""
-                        onChunkRecognized?.invoke(text)
+            val sampleRate = 16000
+            val channelConfig = AudioFormat.CHANNEL_IN_MONO
+            val audioFormat = AudioFormat.ENCODING_PCM_16BIT
+            val minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
+            val bufferSize = maxOf(minBufferSize, sampleRate * 2 / 10)
+
+            val audioRecord = AudioRecord(
+                MediaRecorder.AudioSource.VOICE_RECOGNITION,
+                sampleRate,
+                channelConfig,
+                audioFormat,
+                bufferSize
+            )
+
+            if (audioRecord.state != AudioRecord.STATE_INITIALIZED) {
+                throw Exception("Не удалось инициализировать микрофон для VOSK")
+            }
+
+            isAudioRecording = true
+            audioRecord.startRecording()
+
+            audioRecordThread = Thread {
+                val buffer = ShortArray(4096)
+                while (isAudioRecording && !Thread.currentThread().isInterrupted) {
+                    val nread = audioRecord.read(buffer, 0, buffer.size)
+                    if (nread > 0) {
+                        // Рассчитываем среднеквадратичное значение (RMS) амплитуды микрофона
+                        var sumSquare = 0.0
+                        for (i in 0 until nread) {
+                            val sample = buffer[i].toDouble()
+                            sumSquare += sample * sample
+                        }
+                        val rms = Math.sqrt(sumSquare / nread) / 32768.0
+                        // Масштабируем до диапазона 0f..12f (корень из RMS дает плавную реакцию индикатора)
+                        val volumeLevel = (Math.sqrt(rms) * 12.0).toFloat().coerceIn(0f, 12f)
+                        _rmsDb.value = volumeLevel
+
+                        if (isProcessingAllowed) {
+                            val recognizer = voskRecognizer ?: break
+                            if (recognizer.acceptWaveForm(buffer, nread)) {
+                                val resultJson = recognizer.getResult()
+                                val text = parseResultHypothesis(resultJson).trim()
+                                if (text.isNotBlank() && text != lastProcessedChunk) {
+                                    lastProcessedChunk = text
+                                    GlobalConsoleLogger.d("VOSK", "Распознан фрагмент VOSK: «$text»")
+                                    _recognizedText.value = text
+                                    _partialText.value = ""
+                                    onChunkRecognized?.invoke(text)
+                                }
+                            } else {
+                                val partialJson = recognizer.getPartialResult()
+                                val partial = parsePartialHypothesis(partialJson).trim()
+                                if (partial.isNotBlank()) {
+                                    _partialText.value = partial
+                                }
+                            }
+                        }
                     }
                 }
-
-                override fun onPartialResult(hypothesis: String) {
-                    if (!isProcessingAllowed) return
-                    val partial = parsePartialHypothesis(hypothesis).trim()
-                    if (partial.isNotBlank()) {
-                        _partialText.value = partial
-                    }
-                }
-
-                override fun onFinalResult(hypothesis: String) {
-                    if (!isProcessingAllowed) return
-                    val text = parseResultHypothesis(hypothesis).trim()
-                    if (text.isNotBlank() && text != lastProcessedChunk) {
-                        lastProcessedChunk = text
-                        GlobalConsoleLogger.i("VOSK", "Финальный результат VOSK: «$text»")
-                        _recognizedText.value = text
-                        _partialText.value = ""
-                        onChunkRecognized?.invoke(text)
-                    }
-                }
-
-                override fun onError(exception: Exception) {
-                    if (!isProcessingAllowed) return
-                    GlobalConsoleLogger.e("VOSK", "Ошибка VOSK слушателя: ${exception.localizedMessage}", exception)
-                    Log.e("VoiceInputManager", "Vosk listener error", exception)
-                    _errorState.value = exception.localizedMessage
-                }
-
-                override fun onTimeout() {
-                    // Continuous listening, do not stop automatically
-                }
-            })
+                try {
+                    audioRecord.stop()
+                    audioRecord.release()
+                } catch (_: Throwable) {}
+            }.apply {
+                name = "VoskAudioRecordThread"
+                start()
+            }
 
             _isListening.value = true
             _errorState.value = null
-            GlobalConsoleLogger.i("VOSK", "VOSK успешно запущен и слушатель готов (offline)")
-            Log.d("VoiceInputManager", "Vosk successfully started listening offline!")
+            GlobalConsoleLogger.i("VOSK", "VOSK успешно запущен с отслеживанием уровня громкости микрофона (offline)")
+            Log.d("VoiceInputManager", "Vosk successfully started with microphone volume level tracking offline!")
         } catch (e: Throwable) {
-            GlobalConsoleLogger.e("VOSK", "Ошибка JNI VOSK, переход на системный SpeechRecognizer: ${e.localizedMessage}", e)
-            Log.e("VoiceInputManager", "Vosk JNI error, falling back to system SpeechRecognizer", e)
-            startSystemSpeechRecognizer(callerContext)
-        }
-    }
-
-    private fun startSystemSpeechRecognizer(callerContext: Context) {
-        val currentContext = activeContextRef?.get() ?: callerContext
-        val isAvailable = try {
-            val intent = Intent("android.speech.RecognitionService")
-            val services = currentContext.packageManager.queryIntentServices(intent, 0)
-            !services.isNullOrEmpty() && SystemSpeechRecognizer.isRecognitionAvailable(currentContext)
-        } catch (_: Throwable) {
-            false
-        }
-
-        if (!isAvailable) {
-            _errorState.value = "Голосовая служба недоступна. Пожалуйста, введите текст вручную."
+            GlobalConsoleLogger.e("VOSK", "Ошибка VOSK: ${e.localizedMessage}", e)
+            Log.e("VoiceInputManager", "Vosk error", e)
+            _errorState.value = "Ошибка VOSK: ${e.localizedMessage}"
             _isListening.value = false
-            return
-        }
-
-        mainHandler.post {
-            try {
-                stopRecognizerOnly()
-
-                val recognizer = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                    SystemSpeechRecognizer.createSpeechRecognizer(currentContext.createAttributionContext("voice_input"))
-                } else {
-                    SystemSpeechRecognizer.createSpeechRecognizer(currentContext)
-                }
-
-                systemSpeechRecognizer = recognizer
-                recognizer.setRecognitionListener(object : SystemRecognitionListener {
-                    override fun onReadyForSpeech(params: Bundle?) {
-                        GlobalConsoleLogger.d("VOICE", "Системный распознаватель готов к приему речи")
-                        _isListening.value = true
-                        _errorState.value = null
-                    }
-
-                    override fun onBeginningOfSpeech() {
-                        GlobalConsoleLogger.d("VOICE", "Обнаружено начало речи")
-                        _isListening.value = true
-                    }
-
-                    override fun onRmsChanged(rmsdB: Float) {
-                        val normalized = ((rmsdB + 2f) / 14f).coerceIn(0.05f, 1f)
-                        _rmsDb.value = normalized
-                    }
-
-                    override fun onBufferReceived(buffer: ByteArray?) {}
-
-                    override fun onEndOfSpeech() {
-                        GlobalConsoleLogger.d("VOICE", "Завершение речевого фрагмента")
-                        if (!isContinuous || isPaused) {
-                            _isListening.value = false
-                        }
-                    }
-
-                    override fun onError(error: Int) {
-                        GlobalConsoleLogger.w("VOICE", "Системный распознаватель вернул ошибку code: $error")
-                        Log.d("VoiceInputManager", "System recognizer onError code: $error")
-                        if (isContinuous && !isPaused) {
-                            _isListening.value = true
-                            mainHandler.postDelayed({
-                                if (isContinuous && !isPaused) {
-                                    startSystemSpeechRecognizer(currentContext)
-                                }
-                            }, 200)
-                        } else {
-                            _isListening.value = false
-                        }
-                    }
-
-                    override fun onResults(results: Bundle?) {
-                        if (!isProcessingAllowed) return
-                        val matches = results?.getStringArrayList(SystemSpeechRecognizer.RESULTS_RECOGNITION)
-                        if (!matches.isNullOrEmpty()) {
-                            val text = matches[0].trim()
-                            if (text.isNotBlank() && text != lastProcessedChunk) {
-                                lastProcessedChunk = text
-                                GlobalConsoleLogger.i("VOICE", "Системный движок распознал: «$text»")
-                                _recognizedText.value = text
-                                _partialText.value = ""
-                                onChunkRecognized?.invoke(text)
-                            }
-                        }
-
-                        if (isContinuous && !isPaused) {
-                            _isListening.value = true
-                            mainHandler.post {
-                                if (isContinuous && !isPaused) {
-                                    startSystemSpeechRecognizer(currentContext)
-                                }
-                            }
-                        } else {
-                            _isListening.value = false
-                        }
-                    }
-
-                    override fun onPartialResults(partialResults: Bundle?) {
-                        val matches = partialResults?.getStringArrayList(SystemSpeechRecognizer.RESULTS_RECOGNITION)
-                        if (!matches.isNullOrEmpty()) {
-                            val text = matches[0]
-                            if (text.isNotBlank()) {
-                                _partialText.value = text
-                            }
-                        }
-                    }
-
-                    override fun onEvent(eventType: Int, params: Bundle?) {}
-                })
-
-                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ru-RU")
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "ru-RU")
-                    putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                    putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
-                    putExtra("android.speech.extra.DICTATION_MODE", true)
-                    putExtra("android.speech.extra.SOUND_OFF", true)
-                    putExtra("android.speech.extras.SPEECH_INPUT_DISABLE_NOTIFICATION_SOUNDS", true)
-                }
-
-                recognizer.startListening(intent)
-                _isListening.value = true
-                _errorState.value = null
-            } catch (e: Throwable) {
-                _isListening.value = false
-                _errorState.value = "Ошибка запуска микрофона: ${e.message}"
-            }
         }
     }
 
@@ -440,12 +340,7 @@ class VoiceInputManager(private val context: Context) {
     }
 
     private fun stopRecognizerOnly() {
-        try {
-            systemSpeechRecognizer?.stopListening()
-            systemSpeechRecognizer?.destroy()
-        } catch (_: Throwable) {}
-        systemSpeechRecognizer = null
-
+        stopAudioThread()
         try {
             voskSpeechService?.stop()
         } catch (_: Throwable) {}
