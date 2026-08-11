@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import com.example.ui.screens.getCategoryColorAndIcon
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
