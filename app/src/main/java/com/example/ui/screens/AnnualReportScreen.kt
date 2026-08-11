@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.db.TransactionEntity
 import com.example.ui.components.formatFullCurrency
 import com.example.ui.theme.DarkBg
 import com.example.ui.theme.Emerald400
@@ -38,6 +39,9 @@ import com.example.ui.utils.MonthsRu
 fun AnnualReportScreen(
     monthlyIncomes: List<Double> = emptyList(),
     monthlyExpenses: List<Double> = emptyList(),
+    selectedYear: Int = 2026,
+    allTransactions: List<TransactionEntity> = emptyList(),
+    onChangeYear: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val totalIncome = remember(monthlyIncomes) { monthlyIncomes.sum() }
@@ -51,7 +55,6 @@ fun AnnualReportScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Итоговая карточка за год
         Card(
             colors = CardDefaults.cardColors(containerColor = Slate900.copy(alpha = 0.8f)),
             border = BorderStroke(1.dp, Slate800),
@@ -63,7 +66,7 @@ fun AnnualReportScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "ГОДОВОЙ ИТОГ",
+                    text = "ГОДОВОЙ ИТОГ ($selectedYear)",
                     color = Slate400,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
@@ -107,7 +110,6 @@ fun AnnualReportScreen(
             }
         }
 
-        // Карточка с детализацией по месяцам
         Card(
             colors = CardDefaults.cardColors(containerColor = Slate900.copy(alpha = 0.6f)),
             border = BorderStroke(1.dp, Slate800),
@@ -118,7 +120,7 @@ fun AnnualReportScreen(
                 modifier = Modifier.padding(16.dp)
             ) {
                 Text(
-                    text = "Детализация по месяцах",
+                    text = "Детализация по месяцам",
                     color = Color.White,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
@@ -126,7 +128,6 @@ fun AnnualReportScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Шапка таблицы
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -166,7 +167,6 @@ fun AnnualReportScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Список месяцев
                 for (idx in MonthsRu.indices) {
                     val monthName = MonthsRu[idx]
                     val inc = monthlyIncomes.getOrElse(idx) { 0.0 }
