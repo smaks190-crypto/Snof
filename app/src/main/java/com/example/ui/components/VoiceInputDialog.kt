@@ -339,10 +339,11 @@ fun VoiceRecordingOverlay(
     val screenWidthDp = configuration.screenWidthDp.toFloat()
     val screenHeightDp = configuration.screenHeightDp.toFloat()
 
+    // ПРАВКА 1: делаем -32f для всех режимов, чтобы плашка вставала идеально симметрично
     val desiredWidth = when {
         isConsentNeeded || isApiKeyNeeded -> (screenWidthDp - 32f).coerceAtLeast(300f)
         showManualInput || isEditingOperations -> (screenWidthDp - 32f).coerceAtLeast(300f)
-        isVoiceActive -> (screenWidthDp - 48f).coerceAtLeast(280f)
+        isVoiceActive -> (screenWidthDp - 32f).coerceAtLeast(280f)
         else -> 56f
     }
 
@@ -524,8 +525,9 @@ fun VoiceRecordingOverlay(
         label = "box_bottom_padding"
     )
 
+    // ПРАВКА 2: Гасим градиентную рамку при записи голоса (!isVoiceActive)
     val borderAlpha by animateFloatAsState(
-        targetValue = if (showAsExpanded) 1f else 0f,
+        targetValue = if (showAsExpanded && !isVoiceActive) 1f else 0f,
         animationSpec = tween(400, easing = LinearOutSlowInEasing),
         label = "border_alpha"
     )
@@ -824,4 +826,3 @@ fun VoiceRecordingOverlay(
         }
     }
 }
-
