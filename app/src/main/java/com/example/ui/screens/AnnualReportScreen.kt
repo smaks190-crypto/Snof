@@ -269,65 +269,50 @@ fun AnnualReportScreen(
 
                 Spacer(modifier = Modifier.height(6.dp))
 
-                MonthsRu.forEachIndexed { idx, monthName ->
-                    val inc = monthlyIncomes[idx]
-                    val exp = monthlyExpenses[idx]
-                    val net = inc - exp
+                // Таблица детализации по месяцам
+    for (idx in MonthsRu.indices) {
+    val monthName = MonthsRu[idx]
+    val inc = monthlyIncomes.getOrElse(idx) { 0.0 }
+    val exp = monthlyExpenses.getOrElse(idx) { 0.0 }
+    val net = inc - exp
 
-                    val incStr = formatFullCurrency(inc)
-                    val expStr = formatFullCurrency(exp)
-                    val netStr = formatFullCurrency(net)
+    val incStr = formatFullCurrency(inc)
+    val expStr = formatFullCurrency(exp)
+    val netStr = formatFullCurrency(net)
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(monthName, color = Slate100, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.2f))
-                        Text(
-                            text = incStr,
-                            color = Slate100,
-                            fontSize = when {
-                                incStr.length > 12 -> 8.sp
-                                incStr.length > 9 -> 9.sp
-                                else -> 11.sp
-                            },
-                            maxLines = 1,
-                            softWrap = false,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1.5f)
-                        )
-                        Text(
-                            text = expStr,
-                            color = Slate100,
-                            fontSize = when {
-                                expStr.length > 12 -> 8.sp
-                                expStr.length > 9 -> 9.sp
-                                else -> 11.sp
-                            },
-                            maxLines = 1,
-                            softWrap = false,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1.5f)
-                        )
-                        Text(
-                            text = netStr,
-                            color = if (net >= 0) Emerald400 else Rose500,
-                            fontSize = when {
-                                netStr.length > 12 -> 8.sp
-                                netStr.length > 9 -> 9.sp
-                                else -> 11.sp
-                            },
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            softWrap = false,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1.5f)
-                        )
-                    }
-                }
-            }
-        }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = monthName,
+            color = Slate400,
+            fontSize = 12.sp,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = incStr,
+            color = Emerald400,
+            fontSize = 11.sp,
+            fontFamily = FontFamily.Monospace,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = expStr,
+            color = Rose500,
+            fontSize = 11.sp,
+            fontFamily = FontFamily.Monospace,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = netStr,
+            color = if (net >= 0) Emerald400 else Rose500,
+            fontSize = 11.sp,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.weight(1f)
+        )
     }
 }
