@@ -1,22 +1,11 @@
 package com.example.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -39,11 +28,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.LocalBar
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.NorthEast
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.ShoppingBag
@@ -65,17 +51,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -86,11 +65,12 @@ import com.example.data.db.AiAuditEntity
 import com.example.data.db.CategoryEntity
 import com.example.data.db.TransactionEntity
 import com.example.ui.components.SwipeToRevealController
+import com.example.ui.components.VoiceInputNeonCapsule
+import com.example.ui.components.VoiceInputNeuralVisualizer
 import com.example.ui.components.dialogs.AllTransactionsDialog
 import com.example.ui.components.dialogs.CategoryLimitsDialog
 import com.example.ui.components.dialogs.ReceiptDetailsDialog
 import com.example.ui.components.formatFullCurrency
-import com.example.ui.theme.DarkBg
 import com.example.ui.theme.Emerald400
 import com.example.ui.theme.Indigo500
 import com.example.ui.theme.Rose500
@@ -902,371 +882,6 @@ fun CategoriesGrid(
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun VoiceInputNeuralVisualizer(
-    audioLevel: Float = 0.5f,
-    isListening: Boolean = true,
-    statusText: String = "Слушаю...",
-    modifier: Modifier = Modifier
-) {
-    val infiniteTransition = rememberInfiniteTransition(label = "NeuralPhase")
-    val phase by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 6.28318f * 2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "PhaseSpec"
-    )
-
-    val animatedAudioLevel by animateFloatAsState(
-        targetValue = if (isListening) audioLevel.coerceIn(0.1f, 1f) else 0.05f,
-        animationSpec = spring(stiffness = Spring.StiffnessLow),
-        label = "AudioLevelAnim"
-    )
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp)
-                .clip(RoundedCornerShape(26.dp))
-                .background(Slate900.copy(alpha = 0.75f))
-                .border(
-                    width = 1.dp,
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(
-                            Emerald400.copy(alpha = 0.3f),
-                            Indigo500.copy(alpha = 0.5f),
-                            Rose500.copy(alpha = 0.3f)
-                        )
-                    ),
-                    shape = RoundedCornerShape(26.dp)
-                )
-                .padding(horizontal = 16.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .scale(1f + animatedAudioLevel * 0.15f)
-                    .blur(20.dp)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                Indigo500.copy(alpha = 0.35f * animatedAudioLevel),
-                                Emerald400.copy(alpha = 0.2f * animatedAudioLevel),
-                                Color.Transparent
-                            )
-                        )
-                    )
-            )
-
-            Canvas(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(36.dp)
-            ) {
-                val width = size.width
-                val height = size.height
-                val centerY = height / 2f
-
-                val waveColors = listOf(
-                    Emerald400 to 1.0f,
-                    Indigo500 to 0.7f,
-                    Rose500 to 0.5f
-                )
-
-                waveColors.forEachIndexed { index, pair ->
-                    val color = pair.first
-                    val speedMult = pair.second
-                    val path = Path()
-                    val wavePhase = phase * speedMult + (index * 1.2f)
-                    val baseAmplitude = (8.dp.toPx() + (animatedAudioLevel * 16.dp.toPx())) * (1f - index * 0.2f)
-
-                    path.moveTo(0f, centerY)
-
-                    var x = 0f
-                    val step = 4f
-                    while (x <= width) {
-                        val normalX = x / width
-                        val envelope = Math.sin(normalX * Math.PI).toFloat()
-
-                        val y = centerY + (
-                            Math.sin(normalX * 3.5 * Math.PI + wavePhase).toFloat() * 0.7f +
-                            Math.sin(normalX * 7.0 * Math.PI - wavePhase * 1.3f).toFloat() * 0.3f
-                        ) * baseAmplitude * envelope
-
-                        path.lineTo(x, y)
-                        x += step
-                    }
-
-                    drawPath(
-                        path = path,
-                        color = color.copy(alpha = if (isListening) 0.85f else 0.3f),
-                        style = Stroke(
-                            width = (2.2f - index * 0.4f).dp.toPx()
-                        )
-                    )
-                }
-            }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 4.dp)
-                    .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.4f))
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(6.dp)
-                        .clip(CircleShape)
-                        .background(if (isListening) Emerald400 else Slate400)
-                )
-                Text(
-                    text = statusText.uppercase(),
-                    color = if (isListening) Emerald400 else Slate400,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace,
-                    letterSpacing = 1.sp
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun VoiceInputNeonCapsule(
-    recognizedText: String,
-    statusText: String = "Слушаю...",
-    assistantText: String = "Давид AI",
-    isListening: Boolean = true,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val infiniteTransition = rememberInfiniteTransition(label = "MicGlowTransition")
-    val micScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.08f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "MicScale"
-    )
-
-    val neonGradient = remember {
-        Brush.linearGradient(
-            colors = listOf(Emerald400, Indigo500, Rose500)
-        )
-    }
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .shadow(
-                elevation = 20.dp,
-                shape = CircleShape,
-                ambientColor = Indigo500,
-                spotColor = Emerald400
-            )
-            .clip(CircleShape)
-            .background(Slate900.copy(alpha = 0.92f))
-            .border(
-                width = 1.5.dp,
-                brush = neonGradient,
-                shape = CircleShape
-            )
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.weight(1f)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .scale(if (isListening) micScale else 1f)
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(neonGradient)
-                        .padding(2.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape)
-                            .background(DarkBg),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Mic,
-                            contentDescription = "Микрофон",
-                            tint = Emerald400,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .size(9.dp)
-                            .clip(CircleShape)
-                            .background(Emerald400)
-                            .border(1.5.dp, DarkBg, CircleShape)
-                    )
-                }
-
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = statusText.uppercase(),
-                            color = Emerald400,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace
-                        )
-                        Text(
-                            text = assistantText,
-                            color = Slate500,
-                            fontSize = 9.sp,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    }
-
-                    MiniWaveformVisualizer(
-                        isListening = isListening,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(14.dp)
-                            .padding(vertical = 2.dp)
-                    )
-
-                    Text(
-                        text = if (recognizedText.isNotBlank()) "«$recognizedText»" else "Скажите сумму и категорию...",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .shadow(elevation = 6.dp, shape = CircleShape, spotColor = Emerald400)
-                        .clip(CircleShape)
-                        .background(Emerald400)
-                        .clickable { onConfirm() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "Подтвердить",
-                        tint = DarkBg,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(Rose500.copy(alpha = 0.15f))
-                        .border(1.dp, Rose500.copy(alpha = 0.35f), CircleShape)
-                        .clickable { onDismiss() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Отмена",
-                        tint = Rose500,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun MiniWaveformVisualizer(
-    isListening: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val infiniteTransition = rememberInfiniteTransition(label = "WaveAnimation")
-    val phase by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 6.28f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "WavePhase"
-    )
-
-    Canvas(modifier = modifier) {
-        val bars = 22
-        val barWidth = size.width / bars
-        val gradient = Brush.horizontalGradient(
-            colors = listOf(Emerald400, Indigo500, Rose500)
-        )
-
-        for (i in 0 until bars) {
-            val h = if (isListening) {
-                (Math.sin((phase + i * 0.4f).toDouble()).toFloat() * 4f + Math.cos((phase * 1.5f + i * 0.3f).toDouble()).toFloat() * 2f + 5f).dp.toPx()
-            } else {
-                3.dp.toPx()
-            }
-
-            val x = i * barWidth + barWidth / 4f
-            val y = (size.height - h) / 2f
-
-            drawRoundRect(
-                brush = gradient,
-                topLeft = Offset(x, y),
-                size = Size(barWidth / 2.2f, h),
-                cornerRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx())
-            )
         }
     }
 }
