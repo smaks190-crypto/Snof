@@ -3,6 +3,7 @@ package com.example.ui.components
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -63,7 +64,13 @@ fun MovingNeonGlow(
         label = "wave_phase"
     )
 
-    val activeAmp = if (isRecording) {
+    val glowAlpha by animateFloatAsState(
+        targetValue = if (isRecording) 1f else 0f,
+        animationSpec = tween(300),
+        label = "neon_glow_alpha"
+    )
+
+    val activeAmp = if (isRecording || glowAlpha > 0f) {
         (amplitude + (sin(wavePhase.toDouble()).toFloat() * 0.15f + 0.15f)).coerceIn(0.15f, 1f)
     } else 0f
 
@@ -73,12 +80,12 @@ fun MovingNeonGlow(
         modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
-        if (isRecording) {
-            Canvas(
-                modifier = Modifier
-                    .width((widthDp + 36f).dp)
-                    .height((heightDp + 36f).dp)
-            ) {
+        Canvas(
+            modifier = Modifier
+                .width((widthDp + 36f).dp)
+                .height((heightDp + 36f).dp)
+        ) {
+            if (glowAlpha > 0f) {
                 val outerStrokeWidth = 14f + activeAmp * 16f
                 val midStrokeWidth = 6f + activeAmp * 8f
                 val coreStrokeWidth = 2.5f + activeAmp * 2.5f
@@ -104,7 +111,7 @@ fun MovingNeonGlow(
                     // Base subtle outline so the capsule is softly outlined in Indigo
                     drawPath(
                         path = capsulePath,
-                        color = Indigo500.copy(alpha = 0.25f + activeAmp * 0.2f),
+                        color = Indigo500.copy(alpha = (0.25f + activeAmp * 0.2f) * glowAlpha),
                         style = Stroke(width = 2.dp.toPx())
                     )
 
@@ -123,7 +130,7 @@ fun MovingNeonGlow(
                             totalLength = totalLength,
                             startDist = startDist,
                             endDist = endDist,
-                            color = color.copy(alpha = 0.22f + activeAmp * 0.28f),
+                            color = color.copy(alpha = (0.22f + activeAmp * 0.28f) * glowAlpha),
                             strokeWidth = outerStrokeWidth
                         )
                         // Medium glow
@@ -132,7 +139,7 @@ fun MovingNeonGlow(
                             totalLength = totalLength,
                             startDist = startDist,
                             endDist = endDist,
-                            color = color.copy(alpha = 0.55f + activeAmp * 0.35f),
+                            color = color.copy(alpha = (0.55f + activeAmp * 0.35f) * glowAlpha),
                             strokeWidth = midStrokeWidth
                         )
                         // Core bright line
@@ -141,7 +148,7 @@ fun MovingNeonGlow(
                             totalLength = totalLength,
                             startDist = startDist,
                             endDist = endDist,
-                            color = color.copy(alpha = 0.95f),
+                            color = color.copy(alpha = 0.95f * glowAlpha),
                             strokeWidth = coreStrokeWidth
                         )
                     }
