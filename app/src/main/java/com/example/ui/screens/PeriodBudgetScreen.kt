@@ -1,7 +1,7 @@
 package com.example.ui.screens
 
-import com.example.ui.utils.MonthsRu
 import android.widget.Toast
+import com.example.ui.utils.MonthsRu
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
