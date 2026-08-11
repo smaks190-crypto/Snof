@@ -1,6 +1,5 @@
 package com.example.ui.screens
 
-import com.example.ui.components.VoiceInputNeonCapsule
 import android.widget.Toast
 import com.example.ui.utils.MonthsRu
 import androidx.compose.animation.AnimatedVisibility
