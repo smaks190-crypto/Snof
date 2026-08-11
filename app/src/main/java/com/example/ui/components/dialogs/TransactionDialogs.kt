@@ -786,6 +786,7 @@ fun AddTransactionDialog(
 @Composable
 fun AllTransactionsDialog(
     transactions: List<TransactionEntity>,
+    allTransactions: List<TransactionEntity> = emptyList(),
     onDeleteTransaction: ((String) -> Unit)? = null,
     onEditTransaction: ((TransactionEntity) -> Unit)? = null,
     initialFilterType: String = "all",
@@ -793,6 +794,9 @@ fun AllTransactionsDialog(
     onDismiss: () -> Unit
 ) {
     var selectedReceiptTransaction by remember { mutableStateOf<TransactionEntity?>(null) }
+    val fullTxList = remember(transactions, allTransactions) {
+        if (allTransactions.isNotEmpty()) allTransactions else transactions
+    }
     val lazyListState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val isScrolled by remember {
@@ -1262,7 +1266,7 @@ fun AllTransactionsDialog(
 
     if (selectedReceiptTransaction != null) {
         val receipt = selectedReceiptTransaction!!
-        val receiptItems = transactions.filter { it.parentId == receipt.id }
+        val receiptItems = fullTxList.filter { it.parentId == receipt.id }
         
         ReceiptDetailsDialog(
             parentTransaction = receipt,
@@ -2744,7 +2748,7 @@ fun AllTransactionsDialog(
                                         item = tx,
                                         onDelete = { txId -> onDeleteTransaction?.invoke(txId) },
                                         onClick = {
-                                            val childItems = transactions.filter { it.parentId == tx.id }
+                                            val childItems = fullTxList.filter { it.parentId == tx.id }
                                             if (childItems.isNotEmpty()) {
                                                 selectedReceiptTransaction = tx
                                             } else {

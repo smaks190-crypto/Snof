@@ -331,6 +331,7 @@ fun PeriodBudgetScreen(
             val currentPeriodInitialDate = if (periodType == PeriodType.DAY || periodType == PeriodType.WEEK) selectedDateDay else monthStart
             AllTransactionsDialog(
                 transactions = if (allTransactions.isNotEmpty()) allTransactions.filter { it.parentId.isNullOrBlank() } else mainFilteredTransactions,
+                allTransactions = allTransactions,
                 onDeleteTransaction = onDeleteTransaction,
                 onEditTransaction = onEditTransaction,
                 initialFilterType = initialAllTransactionsFilter,
