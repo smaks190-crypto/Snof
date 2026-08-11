@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.material.icons.filled.Mic
 import com.example.ui.components.VoiceInputNeonCapsule
 import android.widget.Toast
 import com.example.ui.utils.MonthsRu
@@ -882,6 +884,177 @@ fun CategoriesGrid(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1
+
+                        @Composable
+fun VoiceInputNeonCapsule(
+    recognizedText: String,
+    statusText: String = "Слушаю...",
+    assistantText: String = "Давид AI",
+    isListening: Boolean = true,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "MicGlowTransition")
+    val micScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.08f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "MicScale"
+    )
+
+    val neonGradient = remember {
+        Brush.linearGradient(
+            colors = listOf(Emerald400, Indigo500, Rose500)
+        )
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .shadow(
+                elevation = 20.dp,
+                shape = CircleShape,
+                ambientColor = Indigo500,
+                spotColor = Emerald400
+            )
+            .clip(CircleShape)
+            .background(Slate900.copy(alpha = 0.92f))
+            .border(
+                width = 1.5.dp,
+                brush = neonGradient,
+                shape = CircleShape
+            )
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .scale(if (isListening) micScale else 1f)
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(neonGradient)
+                        .padding(2.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .background(DarkBg),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Mic,
+                            contentDescription = "Микрофон",
+                            tint = Emerald400,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .size(9.dp)
+                            .clip(CircleShape)
+                            .background(Emerald400)
+                            .border(1.5.dp, DarkBg, CircleShape)
+                    )
+                }
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = statusText.uppercase(),
+                            color = Emerald400,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                        Text(
+                            text = assistantText,
+                            color = Slate500,
+                            fontSize = 9.sp,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+
+                    MiniWaveformVisualizer(
+                        isListening = isListening,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(14.dp)
+                            .padding(vertical = 2.dp)
+                    )
+
+                    Text(
+                        text = if (recognizedText.isNotBlank()) "«$recognizedText»" else "Скажите сумму и категорию...",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .shadow(elevation = 6.dp, shape = CircleShape, spotColor = Emerald400)
+                        .clip(CircleShape)
+                        .background(Emerald400)
+                        .clickable { onConfirm() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Подтвердить",
+                        tint = DarkBg,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(Rose500.copy(alpha = 0.15f))
+                        .border(1.dp, Rose500.copy(alpha = 0.35f), CircleShape)
+                        .clickable { onDismiss() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Отмена",
+                        tint = Rose500,
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
