@@ -1,6 +1,6 @@
 package com.example.ui.components.dialogs
 
-import com.example.ui.components.dialogs.transactions.MixedCategoriesDialog
+import com.example.ui.components.dialogs.transactions.*
 
 import android.app.DatePickerDialog
 import android.content.Intent
@@ -741,58 +741,10 @@ fun AllTransactionsDialog(
                     }
 
                     // Header Bar
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 12.dp),
-                        horizontalArrangement = Arrangement.Start,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        Brush.linearGradient(
-                                            listOf(Emerald400, Indigo500, Rose500)
-                                        )
-                                    )
-                                    .padding(2.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(CircleShape)
-                                        .background(DarkBg),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.List,
-                                        contentDescription = null,
-                                        tint = Emerald400,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
-                            Column {
-                                Text(
-                                    text = "Все операции",
-                                    color = Color.White,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = "Показано ${sortedList.size} из ${transactions.size} операций",
-                                    color = Slate400,
-                                    fontSize = 11.sp
-                                )
-                            }
-                        }
-                    }
+                    TransactionHeaderBar(
+                        totalCount = transactions.size,
+                        filteredCount = sortedList.size
+                    )
 
                     // Pinned Collapsible / Morphing Header or Full-Size Components
                     val showCompactHeader = isScrolled && filterType != "all"
@@ -806,117 +758,21 @@ fun AllTransactionsDialog(
                         label = "header_morph_animation"
                     ) { targetCompact ->
                         if (targetCompact) {
-                            val isExpense = filterType == "expense"
-                            val accentColor = if (isExpense) Rose500 else Emerald400
-                            val activeAmount = if (isExpense) totalExpenseAmt else totalIncomeAmt
-                            val titleText = if (isExpense) "Траты" else "Доходы"
-
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .background(Slate900)
-                                    .border(1.dp, Slate800, RoundedCornerShape(20.dp))
-                                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                ) {
-                                    Canvas(modifier = Modifier.size(36.dp)) {
-                                        val strokeWidth = 5.dp.toPx()
-                                        val radius = (size.minDimension - strokeWidth) / 2
-                                        val centerOffset = Offset(size.width / 2, size.height / 2)
-
-                                        if (currentActiveCategoryTotals.isEmpty() || currentActiveCategoryTotals.sumOf { it.second } <= 0) {
-                                            drawCircle(
-                                                color = Slate800,
-                                                radius = radius,
-                                                center = centerOffset,
-                                                style = Stroke(width = strokeWidth)
-                                            )
-                                        } else {
-                                            val sumAll = currentActiveCategoryTotals.sumOf { it.second }
-                                            var startAngle = -90f
-
-                                            currentActiveCategoryTotals.forEachIndexed { _, (catName, amt) ->
-                                                val sweepAngle = ((amt / sumAll) * 360f).toFloat()
-                                                val col = getCategoryColor(catName)
-                                                drawArc(
-                                                    color = col,
-                                                    startAngle = startAngle,
-                                                    sweepAngle = sweepAngle - 2f,
-                                                    useCenter = false,
-                                                    topLeft = Offset(strokeWidth / 2, strokeWidth / 2),
-                                                    size = Size(size.width - strokeWidth, size.height - strokeWidth),
-                                                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
-                                                )
-                                                startAngle += sweepAngle
-                                            }
-                                        }
-                                    }
-
-                                    Column {
-                                        Text(
-                                            text = titleText,
-                                            color = Slate400,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Text(
-                                            text = formatFullCurrency(activeAmount),
-                                            color = Color.White,
-                                            fontSize = 15.sp,
-                                            fontWeight = FontWeight.ExtraBold
-                                        )
-                                    }
+                            TransactionCompactHeader(
+                                filterType = filterType,
+                                totalExpenseAmt = totalExpenseAmt,
+                                totalIncomeAmt = totalIncomeAmt,
+                                currentActiveCategoryTotals = currentActiveCategoryTotals,
+                                selectedCategoryFilter = selectedCategoryFilter,
+                                isDrilledDownToMixed = isDrilledDownToMixed,
+                                remainingCategoryNames = remainingCategoryNames,
+                                getCategoryColor = { getCategoryColor(it) },
+                                onResetFilter = {
+                                    filterType = "all"
+                                    selectedCategoryFilter = null
+                                    isDrilledDownToMixed = false
                                 }
-
-                                val activeFilterText = when {
-                                    !selectedCategoryFilter.isNullOrBlank() -> selectedCategoryFilter
-                                    isDrilledDownToMixed -> {
-                                        if (remainingCategoryNames.size <= 1) "✨ Прочие" else "✨ Смешанные"
-                                    }
-                                    else -> null
-                                }
-
-                                if (!activeFilterText.isNullOrBlank()) {
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(accentColor.copy(alpha = 0.15f))
-                                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                                    ) {
-                                        Text(
-                                            text = activeFilterText,
-                                            color = accentColor,
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-
-                                IconButton(
-                                    onClick = { 
-                                        filterType = "all"
-                                        selectedCategoryFilter = null
-                                        isDrilledDownToMixed = false
-                                    },
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .clip(CircleShape)
-                                        .background(Slate800)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Close,
-                                        contentDescription = "К всем",
-                                        tint = Slate400,
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                }
-                            }
+                            )
                         } else {
                             // Full-Size UI Header
                             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1446,318 +1302,35 @@ fun AllTransactionsDialog(
                                             }
                                         }
 
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            BoxWithConstraints(
-                                                modifier = Modifier
-                                                    .width(180.dp)
-                                                    .height(34.dp)
-                                                    .clip(RoundedCornerShape(12.dp))
-                                                    .background(DarkBg)
-                                                    .border(1.dp, Slate800, RoundedCornerShape(12.dp))
-                                                    .padding(2.dp)
-                                            ) {
-                                                val barWidth = maxWidth
-                                                val tabCount = 3
-                                                val tabWidth = barWidth / tabCount
-
-                                                val periodsList = listOf("week", "month", "year")
-                                                val selectedIndex = periodsList.indexOf(
-                                                    if (selectedPeriod == "all") "month" else selectedPeriod
-                                                ).coerceAtLeast(0)
-
-                                                val animatedFraction by animateFloatAsState(
-                                                    targetValue = selectedIndex.toFloat(),
-                                                    animationSpec = spring(
-                                                        dampingRatio = Spring.DampingRatioLowBouncy,
-                                                        stiffness = Spring.StiffnessMediumLow
-                                                    ),
-                                                    label = "period_tab_fraction"
-                                                )
-
-                                                Box(
-                                                    modifier = Modifier
-                                                        .width(tabWidth)
-                                                        .fillMaxHeight()
-                                                        .offset(x = tabWidth * animatedFraction)
-                                                        .shadow(
-                                                            elevation = 8.dp,
-                                                            shape = RoundedCornerShape(10.dp),
-                                                            ambientColor = Indigo500,
-                                                            spotColor = Indigo500
-                                                        )
-                                                        .background(
-                                                            Brush.horizontalGradient(
-                                                                colors = listOf(Indigo500, Indigo500.copy(alpha = 0.8f))
-                                                            ),
-                                                            shape = RoundedCornerShape(10.dp)
-                                                        )
-                                                        .border(
-                                                            width = 1.dp,
-                                                            color = Indigo500.copy(alpha = 0.6f),
-                                                            shape = RoundedCornerShape(10.dp)
-                                                        )
-                                                )
-
-                                                Row(modifier = Modifier.fillMaxSize()) {
-                                                    listOf("week" to "Нед", "month" to "Мес", "year" to "Год").forEach { (pKey, pText) ->
-                                                        val isSelected = selectedPeriod == pKey || (selectedPeriod == "all" && pKey == "month")
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .weight(1f)
-                                                                .fillMaxHeight()
-                                                                .clip(RoundedCornerShape(10.dp))
-                                                                .clickable { selectedPeriod = pKey },
-                                                            contentAlignment = Alignment.Center
-                                                        ) {
-                                                            Text(
-                                                                text = pText,
-                                                                color = if (isSelected) Color.White else Slate400,
-                                                                fontSize = 10.sp,
-                                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                                                            )
-                                                        }
-                                                    }
-                                                }
-                                            }
-
-                                            Row(
-                                                modifier = Modifier
-                                                    .clip(RoundedCornerShape(12.dp))
-                                                    .background(DarkBg)
-                                                    .padding(2.dp),
-                                                horizontalArrangement = Arrangement.spacedBy(2.dp)
-                                            ) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .clip(RoundedCornerShape(10.dp))
-                                                        .background(if (chartViewMode == "donut") Slate800 else Color.Transparent)
-                                                        .clickable { chartViewMode = "donut" }
-                                                        .padding(horizontal = 8.dp, vertical = 5.dp)
-                                                ) {
-                                                    Text("🔄", fontSize = 11.sp)
-                                                }
-                                                Box(
-                                                    modifier = Modifier
-                                                        .clip(RoundedCornerShape(10.dp))
-                                                        .background(if (chartViewMode == "bar") Slate800 else Color.Transparent)
-                                                        .clickable { chartViewMode = "bar" }
-                                                        .padding(horizontal = 8.dp, vertical = 5.dp)
-                                                ) {
-                                                    Text("📊", fontSize = 11.sp)
-                                                }
-                                            }
-                                        }
+                                        TransactionPeriodSelector(
+                                            selectedPeriod = selectedPeriod,
+                                            onPeriodSelect = { pKey -> selectedPeriod = pKey },
+                                            chartViewMode = chartViewMode,
+                                            onChartViewModeChange = { mode -> chartViewMode = mode }
+                                        )
 
                                         if (categoryTotalsMap.isNotEmpty()) {
                                             val totalCategorySum = categoryTotalsMap.sumOf { it.second }
-                                            val categoriesScrollState = rememberScrollState()
+                                            val remainingSum = categoryTotalsMap.drop(2).sumOf { it.second }
 
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .heightIn(max = 140.dp)
-                                                    .verticalScroll(categoriesScrollState)
-                                            ) {
-                                                FlowRow(
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                                ) {
-                                                    if (isDrilledDownToMixed) {
-                                                        Row(
-                                                            modifier = Modifier
-                                                                .clip(RoundedCornerShape(20.dp))
-                                                                .background(DarkBg)
-                                                                .border(1.dp, Indigo500.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
-                                                                .clickable {
-                                                                    isDrilledDownToMixed = false
-                                                                    selectedCategoryFilter = null
-                                                                }
-                                                                .padding(horizontal = 10.dp, vertical = 6.dp),
-                                                            verticalAlignment = Alignment.CenterVertically,
-                                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                                        ) {
-                                                            Text(
-                                                                text = "← Назад",
-                                                                color = Indigo500,
-                                                                fontSize = 11.sp,
-                                                                fontWeight = FontWeight.Bold
-                                                            )
-                                                        }
-
-                                                        val remainingCategories = categoryTotalsMap.drop(2)
-                                                        remainingCategories.forEachIndexed { idx, (catName, remainingSumAmt) ->
-                                                            val isCatSelected = selectedCategoryFilter == catName
-                                                            val pillColor = getCategoryColor(catName)
-                                                            val pct = if (totalCategorySum > 0) {
-                                                                ((remainingSumAmt / totalCategorySum) * 100).let { kotlin.math.round(it).toInt() }
-                                                            } else 0
-
-                                                            Row(
-                                                                modifier = Modifier
-                                                                    .then(
-                                                                        if (isCatSelected) {
-                                                                            Modifier.shadow(
-                                                                                elevation = 8.dp,
-                                                                                shape = RoundedCornerShape(20.dp),
-                                                                                ambientColor = pillColor,
-                                                                                spotColor = pillColor
-                                                                            )
-                                                                        } else Modifier
-                                                                    )
-                                                                    .clip(RoundedCornerShape(20.dp))
-                                                                    .background(if (isCatSelected) pillColor else DarkBg)
-                                                                    .border(
-                                                                        1.dp,
-                                                                        if (isCatSelected) pillColor else Slate800,
-                                                                        RoundedCornerShape(20.dp)
-                                                                    )
-                                                                    .clickable {
-                                                                        selectedCategoryFilter = if (isCatSelected) null else catName
-                                                                    }
-                                                                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                                                                verticalAlignment = Alignment.CenterVertically,
-                                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                                            ) {
-                                                                Box(
-                                                                    modifier = Modifier
-                                                                        .size(8.dp)
-                                                                        .clip(CircleShape)
-                                                                        .background(pillColor)
-                                                                )
-                                                                Text(
-                                                                    text = if (pct > 0) "$catName $pct%" else catName,
-                                                                    color = if (isCatSelected) Color.White else Slate300,
-                                                                    fontSize = 11.sp,
-                                                                    fontWeight = FontWeight.Medium
-                                                                )
-                                                                Text(
-                                                                    text = formatFullCurrency(remainingSumAmt),
-                                                                    color = if (isCatSelected) Color.White else Slate400,
-                                                                    fontSize = 11.sp,
-                                                                    fontWeight = FontWeight.Bold
-                                                                )
-                                                            }
-                                                        }
-                                                    } else {
-                                                        val visibleCategories = if (shouldGroup) {
-                                                            categoryTotalsMap.take(2)
-                                                        } else {
-                                                            categoryTotalsMap
-                                                        }
-
-                                                        visibleCategories.forEachIndexed { idx, (catName, sumAmt) ->
-                                                            val isCatSelected = selectedCategoryFilter == catName
-                                                            val pillColor = getCategoryColor(catName)
-                                                            val pct = if (totalCategorySum > 0) {
-                                                                ((sumAmt / totalCategorySum) * 100).let { kotlin.math.round(it).toInt() }
-                                                            } else 0
-
-                                                            Row(
-                                                                modifier = Modifier
-                                                                    .then(
-                                                                        if (isCatSelected) {
-                                                                            Modifier.shadow(
-                                                                                elevation = 8.dp,
-                                                                                shape = RoundedCornerShape(20.dp),
-                                                                                ambientColor = pillColor,
-                                                                                spotColor = pillColor
-                                                                            )
-                                                                        } else Modifier
-                                                                    )
-                                                                    .clip(RoundedCornerShape(20.dp))
-                                                                    .background(if (isCatSelected) pillColor else DarkBg)
-                                                                    .border(
-                                                                        1.dp,
-                                                                        if (isCatSelected) pillColor else Slate800,
-                                                                        RoundedCornerShape(20.dp)
-                                                                    )
-                                                                    .clickable {
-                                                                        selectedCategoryFilter = if (isCatSelected) null else catName
-                                                                    }
-                                                                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                                                                verticalAlignment = Alignment.CenterVertically,
-                                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                                            ) {
-                                                                Box(
-                                                                    modifier = Modifier
-                                                                        .size(8.dp)
-                                                                        .clip(CircleShape)
-                                                                        .background(pillColor)
-                                                                )
-                                                                Text(
-                                                                    text = if (pct > 0) "$catName $pct%" else catName,
-                                                                    color = if (isCatSelected) Color.White else Slate300,
-                                                                    fontSize = 11.sp,
-                                                                    fontWeight = FontWeight.Medium
-                                                                )
-                                                                Text(
-                                                                    text = formatFullCurrency(sumAmt),
-                                                                    color = if (isCatSelected) Color.White else Slate400,
-                                                                    fontSize = 11.sp,
-                                                                    fontWeight = FontWeight.Bold
-                                                                )
-                                                            }
-                                                        }
-
-                                                        if (shouldGroup) {
-                                                            val remainingCategories = categoryTotalsMap.drop(2)
-                                                            val remainingSum = remainingCategories.sumOf { it.second }
-                                                            val remainingCount = remainingCategories.size
-                                                            val remainingPct = if (totalCategorySum > 0) {
-                                                                ((remainingSum / totalCategorySum) * 100).let { kotlin.math.round(it).toInt() }
-                                                            } else 0
-
-                                                            val mixedLabel = if (remainingCount <= 1) {
-                                                                "✨ Прочие ${if (remainingPct > 0) "$remainingPct%" else ""}"
-                                                            } else {
-                                                                "✨ Смешанные (+$remainingCount) ${if (remainingPct > 0) "$remainingPct%" else ""}"
-                                                            }
-
-                                                            Row(
-                                                                modifier = Modifier
-                                                                    .clip(RoundedCornerShape(20.dp))
-                                                                    .background(DarkBg)
-                                                                    .border(
-                                                                        1.dp,
-                                                                        Indigo500.copy(alpha = 0.6f),
-                                                                        RoundedCornerShape(20.dp)
-                                                                    )
-                                                                    .clickable {
-                                                                        showMixedCategoriesDialog = true
-                                                                    }
-                                                                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                                                                verticalAlignment = Alignment.CenterVertically,
-                                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                                            ) {
-                                                                Text(
-                                                                    text = mixedLabel,
-                                                                    color = Indigo500,
-                                                                    fontSize = 11.sp,
-                                                                    fontWeight = FontWeight.Bold
-                                                                )
-                                                                Text(
-                                                                    text = formatFullCurrency(remainingSum),
-                                                                    color = Slate400,
-                                                                    fontSize = 11.sp,
-                                                                    fontWeight = FontWeight.Bold
-                                                                )
-                                                                Text(
-                                                                    text = "»",
-                                                                    color = Indigo500,
-                                                                    fontSize = 10.sp,
-                                                                    fontWeight = FontWeight.Bold
-                                                                )
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
+                                            TransactionPillCategoryList(
+                                                categoryTotalsMap = categoryTotalsMap,
+                                                totalCategorySum = totalCategorySum,
+                                                selectedCategoryFilter = selectedCategoryFilter,
+                                                isDrilledDownToMixed = isDrilledDownToMixed,
+                                                shouldGroup = shouldGroup,
+                                                remainingCategoryNames = remainingCategoryNames,
+                                                remainingSum = remainingSum,
+                                                getCategoryColor = { getCategoryColor(it) },
+                                                onCategoryToggle = { newFilter -> selectedCategoryFilter = newFilter },
+                                                onDrillBack = {
+                                                    isDrilledDownToMixed = false
+                                                    selectedCategoryFilter = null
+                                                },
+                                                onOpenMixedDialog = { showMixedCategoriesDialog = true }
+                                            )
                                         }
+
                                     }
                                 }
                             }
@@ -2040,58 +1613,10 @@ fun AllTransactionsDialog(
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         item(key = "search_bar_unpinned") {
-                            Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(48.dp)
-                                    .padding(vertical = 2.dp),
-                                color = Slate900,
-                                shape = RoundedCornerShape(14.dp),
-                                border = androidx.compose.foundation.BorderStroke(
-                                    1.dp,
-                                    if (searchQuery.isNotEmpty()) Indigo500.copy(alpha = 0.6f) else Slate800
-                                )
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Search,
-                                        contentDescription = null,
-                                        tint = if (searchQuery.isNotEmpty()) Indigo500 else Slate400,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    BasicTextField(
-                                        value = searchQuery,
-                                        onValueChange = { searchQuery = it },
-                                        modifier = Modifier.weight(1f),
-                                        singleLine = true,
-                                        textStyle = TextStyle(color = Color.White, fontSize = 13.sp),
-                                        decorationBox = { innerTextField ->
-                                            if (searchQuery.isEmpty()) {
-                                                Text(
-                                                    text = "Поиск операций...",
-                                                    color = Slate500,
-                                                    fontSize = 13.sp
-                                                )
-                                            }
-                                            innerTextField()
-                                        }
-                                    )
-                                    if (searchQuery.isNotEmpty()) {
-                                        Icon(
-                                            imageVector = Icons.Default.Close,
-                                            contentDescription = "Очистить",
-                                            tint = Slate400,
-                                            modifier = Modifier
-                                                .size(16.dp)
-                                                .clickable { searchQuery = "" }
-                                        )
-                                    }
-                                }
-                            }
+                            TransactionSearchBar(
+                                query = searchQuery,
+                                onQueryChange = { searchQuery = it }
+                            )
                         }
 
                         if (sortedList.isEmpty()) {
@@ -2116,36 +1641,12 @@ fun AllTransactionsDialog(
                                     val dayTotalExpense = itemsForDay.filter { it.type == "expense" }.sumOf { kotlin.math.abs(it.amount) }
                                     val dayTotalIncome = itemsForDay.filter { it.type == "income" }.sumOf { kotlin.math.abs(it.amount) }
 
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 4.dp, vertical = 4.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = formatDayHeaderLabel(dateStr),
-                                            color = Color.White,
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-
-                                        if (filterType == "income" && dayTotalIncome > 0) {
-                                            Text(
-                                                text = "+${formatFullCurrency(dayTotalIncome)}",
-                                                color = Emerald400,
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        } else if (dayTotalExpense > 0) {
-                                            Text(
-                                                text = "-${formatFullCurrency(dayTotalExpense)}",
-                                                color = Slate400,
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
-                                    }
+                                    TransactionDayHeader(
+                                        dateLabel = formatDayHeaderLabel(dateStr),
+                                        dayTotalExpense = dayTotalExpense,
+                                        dayTotalIncome = dayTotalIncome,
+                                        filterType = filterType
+                                    )
                                 }
 
                                 items(itemsForDay, key = { it.id }) { tx ->

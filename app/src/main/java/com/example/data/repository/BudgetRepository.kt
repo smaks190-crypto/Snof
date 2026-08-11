@@ -32,12 +32,6 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-data class BudgetBackup(
-    val transactions: List<TransactionEntity>? = emptyList(),
-    val goals: List<GoalEntity>? = emptyList(),
-    val categories: List<CategoryEntity>? = emptyList(),
-    val accounts: List<AccountEntity>? = emptyList()
-)
 
 class BudgetRepository(
     private val context: android.content.Context,
