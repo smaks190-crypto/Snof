@@ -20,20 +20,18 @@ import com.example.ui.theme.Rose500
 fun MovingNeonGlow(
     isRecording: Boolean,
     amplitude: Float,
-    widthDp: Float, // Оставил для совместимости, чтобы не ломать вызов в VoiceRecordingOverlay
-    heightDp: Float, // Оставил для совместимости
+    widthDp: Float, 
+    heightDp: Float, 
     cornerRadiusDp: Float = 28f,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
-    // Плавное появление и исчезновение самого компонента свечения
     val glowAlpha by animateFloatAsState(
         targetValue = if (isRecording) 1f else 0f,
         animationSpec = tween(300),
         label = "neon_glow_alpha"
     )
 
-    // Мягко сглаживаем амплитуду голоса, чтобы свечение не дергалось резко
     val smoothedAmplitude by animateFloatAsState(
         targetValue = amplitude,
         animationSpec = tween(100),
@@ -44,17 +42,15 @@ fun MovingNeonGlow(
         modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
-        // Холст строго по размеру плашки (благодаря matchParentSize)
-        Canvas(
-            modifier = Modifier.matchParentSize()
-        ) {
+        Canvas(modifier = Modifier.matchParentSize()) {
             if (glowAlpha > 0f) {
-                val rectLeft = 0f
-                val rectTop = 0f
-                val rectRight = size.width
-                val rectBottom = size.height
+                // Выдвигаем контур на 2dp наружу, чтобы свечение не резалось фоном плашки
+                val offset = 2.dp.toPx()
+                val rectLeft = -offset
+                val rectTop = -offset
+                val rectRight = size.width + offset
+                val rectBottom = size.height + offset
 
-                // Создаем контур с закругленными углами
                 val capsulePath = Path().apply {
                     addRoundRect(
                         RoundRect(
@@ -64,41 +60,35 @@ fun MovingNeonGlow(
                     )
                 }
 
-                // 1. Базовое свечение (когда молчим - еле видно)
-                val baseAlpha = 0.15f
-                
-                // 2. Динамическое свечение (зависит от громкости голоса)
-                // Чем громче звук, тем выше значение (добавляем до 0.85f к яркости)
-                val voiceAlpha = smoothedAmplitude * 0.85f 
+                // Базовое свечение (в тишине) и добавочное (от голоса)
+                val baseAlpha = 0.2f
+                val voiceAlpha = smoothedAmplitude * 0.8f 
                 val totalAlpha = (baseAlpha + voiceAlpha) * glowAlpha
 
-                // Рисуем 3 слоя для эффекта рассеянного неонового свечения
-                // Цвет взял Rose500 (как кнопка записи), он отлично подходит для индикации микрофона.
-
-                // Внешний контур (самый широкий, сильно увеличивается от голоса)
+                // 1. Внешний слой: широкий и рассеянный всплеск от голоса
                 drawPath(
                     path = capsulePath,
-                    color = Rose500.copy(alpha = totalAlpha * 0.2f),
-                    style = Stroke(width = (10f + smoothedAmplitude * 20f).dp.toPx())
+                    color = Rose500.copy(alpha = totalAlpha * 0.15f),
+                    style = Stroke(width = (12f + smoothedAmplitude * 24f).dp.toPx())
                 )
 
-                // Средний контур (основной ореол свечения)
+                // 2. Средний слой: основной ореол
                 drawPath(
                     path = capsulePath,
-                    color = Rose500.copy(alpha = totalAlpha * 0.5f),
-                    style = Stroke(width = (4f + smoothedAmplitude * 10f).dp.toPx())
+                    color = Rose500.copy(alpha = totalAlpha * 0.4f),
+                    style = Stroke(width = (6f + smoothedAmplitude * 12f).dp.toPx())
                 )
 
-                // Внутренний яркий контур (четкая граница плашки)
+                // 3. Внутренний слой: тонкий яркий контур у самой плашки
                 drawPath(
                     path = capsulePath,
                     color = Rose500.copy(alpha = totalAlpha),
-                    style = Stroke(width = (1f + smoothedAmplitude * 3f).dp.toPx())
+                    style = Stroke(width = (2f + smoothedAmplitude * 4f).dp.toPx())
                 )
             }
         }
-
-        // Сам контент (твоя черная плашка и кнопка)
+        
+        // Сам контент (черная плашка)
         content()
     }
 }
