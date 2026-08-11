@@ -207,7 +207,6 @@ fun PeriodBudgetScreen(
     onDeleteTransaction: (String) -> Unit,
     onEditTransaction: ((TransactionEntity) -> Unit)? = null
 ) {
-    // Состояния для голосового ввода и визуала
     var isVoiceActive by remember { mutableStateOf(false) }
     var recognizedText by remember { mutableStateOf("") }
     var voiceStatusText by remember { mutableStateOf("Слушаю...") }
@@ -454,7 +453,6 @@ fun PeriodBudgetScreen(
             Spacer(modifier = Modifier.height(24.dp))
         }
 
-        // --- НЕЙРО-ВИЗУАЛИЗАТОР И ПЛАШКА ГОЛОСОВОГО ВВОДА ---
         AnimatedVisibility(
             visible = isVoiceActive,
             enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
@@ -501,9 +499,6 @@ fun PeriodBudgetScreen(
     }
 }
 
-/**
- * Флагманский Neural Expressive UI визуал голосового ввода.
- */
 @Composable
 fun VoiceInputNeuralVisualizer(
     audioLevel: Float = 0.5f,
@@ -647,9 +642,6 @@ fun VoiceInputNeuralVisualizer(
     }
 }
 
-/**
- * Неоновая капсула голосового ввода (сохранена без изменений внешнего вида).
- */
 @Composable
 fun VoiceInputNeonCapsule(
     recognizedText: String,
