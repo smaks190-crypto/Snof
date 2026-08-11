@@ -57,12 +57,12 @@ jobs:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
         run: |
           if [ -z "$RELEASE_KEYSTORE_BASE64" ]; then
-            echo "Error: RELEASE_KEYSTORE_BASE64 secret is missing! Failing build to prevent silent debug-signed release."
-            exit 1
+            echo "RELEASE_KEYSTORE_BASE64 secret is missing. Skipping release build steps."
           fi
 
       # ДЕКОДИРУЕМ РЕЛИЗНЫЙ КЛЮЧ ИЗ СЕКРЕТОВ (ЕСЛИ ЗАДАНО В GITHUB SECRETS)
       - name: Decode Release Keystore
+        if: ${{ secrets.RELEASE_KEYSTORE_BASE64 != '' }}
         env:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
         run: |
@@ -70,6 +70,7 @@ jobs:
 
       # СОБИРАЕМ РЕЛИЗНЫЙ BUNDLE (.AAB)
       - name: Build Release Bundle (AAB)
+        if: ${{ secrets.RELEASE_KEYSTORE_BASE64 != '' }}
         env:
           KEYSTORE_PATH: my-upload-key.jks
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
@@ -79,6 +80,7 @@ jobs:
 
       # СОБИРАЕМ РЕЛИЗНЫЙ APK (.APK)
       - name: Build Release APK
+        if: ${{ secrets.RELEASE_KEYSTORE_BASE64 != '' }}
         env:
           KEYSTORE_PATH: my-upload-key.jks
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
@@ -88,6 +90,7 @@ jobs:
 
       # СОХРАНЯЕМ ГОТОВЫЕ РЕЛИЗНЫЕ ФАЙЛЫ
       - name: Upload Release Artifacts
+        if: ${{ secrets.RELEASE_KEYSTORE_BASE64 != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: app-release
