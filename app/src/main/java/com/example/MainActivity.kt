@@ -1,7 +1,7 @@
 package com.example
 
 import com.example.ui.components.dialogs.*
-import com.example.ui.utils.MonthsRu
+
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -302,6 +302,7 @@ fun MainAppScreen(viewModel: BudgetViewModel) {
         }
     }
 
+    // Consent dialog is now triggered on demand when pressing the FAB (+) button on the Period tab or using AI features.
     var pendingExportJson by remember { mutableStateOf<String?>(null) }
 
     val createDocumentLauncher = rememberLauncherForActivityResult(
@@ -511,6 +512,7 @@ fun MainAppScreen(viewModel: BudgetViewModel) {
                                             modifier = Modifier.size(48.dp),
                                             contentAlignment = Alignment.Center
                                         ) {
+                                            // Neon Glow Background underneath
                                             Box(
                                                 modifier = Modifier
                                                     .size(48.dp)
@@ -567,6 +569,7 @@ fun MainAppScreen(viewModel: BudgetViewModel) {
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
+                                    // --- EXPANDING NEON CHAT BUTTON CONTAINER ---
                                     val context = androidx.compose.ui.platform.LocalContext.current
                                     val pName = currentProfile?.name ?: "default"
                                     val prefs = remember { context.getSharedPreferences("app_prefs", android.content.Context.MODE_PRIVATE) }
@@ -583,14 +586,19 @@ fun MainAppScreen(viewModel: BudgetViewModel) {
                                     LaunchedEffect(shouldShowMessage, unreadNotificationsCount) {
                                         if (shouldShowMessage) {
                                             if (isExpandedByNeon) {
+                                                com.example.utils.GlobalConsoleLogger.i("ANIM", "Плашка уже раскрыта (isExpandedByNeon = true), обновление содержимого без повторного мерцания (непрочитанных: $unreadNotificationsCount)")
                                                 kotlinx.coroutines.delay(4000)
                                                 isExpandedByNeon = false
                                                 return@LaunchedEffect
                                             }
 
+                                            com.example.utils.GlobalConsoleLogger.i("ANIM", "Запуск анимации плашки уведомлений (непрочитанных: $unreadNotificationsCount, приветствие: $showWelcomeBubble)")
+                                            // Step 1: Collapse box & start neon flickering first
                                             isExpandedByNeon = false
                                             isNeonFlickering = true
+                                            com.example.utils.GlobalConsoleLogger.d("ANIM", "Эффект неонового мерцания [Старт]: мигание лампы 0.15f -> 1.0f")
 
+                                            // Neon lamp turning-on flickering animation sequence
                                             neonAlpha.snapTo(0.15f)
                                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                             kotlinx.coroutines.delay(70)
@@ -606,12 +614,17 @@ fun MainAppScreen(viewModel: BudgetViewModel) {
                                             neonAlpha.snapTo(1f)
 
                                             isNeonFlickering = false
+                                            com.example.utils.GlobalConsoleLogger.d("ANIM", "Эффект неонового мерцания [Завершен]")
 
+                                            // Step 2: Expand container after flickering completes
                                             isExpandedByNeon = true
+                                            com.example.utils.GlobalConsoleLogger.i("ANIM", "Раскрытие плашки уведомлений: isExpandedByNeon = true")
                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
 
+                                            // Step 3: Show message for 4 seconds, then auto-collapse back to glowing icon
                                             kotlinx.coroutines.delay(4000)
                                             isExpandedByNeon = false
+                                            com.example.utils.GlobalConsoleLogger.i("ANIM", "Авто-сворачивание плашки уведомлений по таймауту (4 сек)")
                                         } else {
                                             isNeonFlickering = false
                                             isExpandedByNeon = false
@@ -647,7 +660,9 @@ fun MainAppScreen(viewModel: BudgetViewModel) {
                                                     dampingRatio = Spring.DampingRatioLowBouncy
                                                 )
                                             )
+                                            
                                             .clickable {
+                                                com.example.utils.GlobalConsoleLogger.i("UI", "Нажатие на плашку уведомлений/чата, открытие диалога")
                                                 showWelcomeBubble = false
                                                 isExpandedByNeon = false
                                                 reportDialogTab = 0
@@ -669,6 +684,7 @@ fun MainAppScreen(viewModel: BudgetViewModel) {
                                                     ),
                                                     modifier = Modifier.size(20.dp)
                                                 )
+
                                             }
 
                                             AnimatedVisibility(
@@ -732,9 +748,10 @@ fun MainAppScreen(viewModel: BudgetViewModel) {
                                         }
                                     }
                                 }
+
                             }
 
-                            // --- NAVIGATION TABS ---
+// --- NAVIGATION TABS ---
                             val currentMainTab = mainPagerState.currentPage
                             BoxWithConstraints(
                                 modifier = Modifier
@@ -998,7 +1015,7 @@ fun MainAppScreen(viewModel: BudgetViewModel) {
                 val periodTitleName = when (periodType) {
                     PeriodType.DAY -> "День ($selectedDateDay)"
                     PeriodType.WEEK -> "Неделя ($selectedDateDay)"
-                    PeriodType.MONTH -> "${MonthsRu.getOrElse(selectedMonthIdx) { "Месяц" }}"
+                    PeriodType.MONTH -> "${com.example.ui.screens.MonthsRu.getOrElse(selectedMonthIdx) { "Месяц" }}"
                     PeriodType.ALL -> "Период (с $allPeriodStart по $allPeriodEnd)"
                 }
                 val context = androidx.compose.ui.platform.LocalContext.current

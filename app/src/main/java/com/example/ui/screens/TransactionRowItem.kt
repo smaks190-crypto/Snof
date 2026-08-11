@@ -1,6 +1,5 @@
 package com.example.ui.screens
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -38,9 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.db.TransactionEntity
@@ -52,11 +49,9 @@ import com.example.ui.theme.Indigo500
 import com.example.ui.theme.Rose500
 import com.example.ui.theme.Slate400
 import com.example.ui.theme.Slate800
-import java.text.DecimalFormat
-import java.text.DecimalFormatSymbols
 import java.util.Locale
 
-fun getCategoryColorAndIcon(category: String, subcategory: String): Pair<Color, ImageVector> {
+fun getCategoryColorAndIcon(category: String, subcategory: String): Pair<Color, androidx.compose.ui.graphics.vector.ImageVector> {
     val text = "$category $subcategory".lowercase()
     return when {
         text.contains("кредит") || text.contains("займ") || text.contains("ипотек") || text.contains("долг") || text.contains("банк") -> Pair(Rose500, Icons.Default.AccountBalance)
@@ -88,21 +83,17 @@ fun TransactionRowItem(
     canDelete: Boolean = true
 ) {
     val numberFormat = remember {
-        val symbols = DecimalFormatSymbols(Locale("ru", "RU")).apply {
+        val symbols = java.text.DecimalFormatSymbols(Locale("ru", "RU")).apply {
             groupingSeparator = ' '
             decimalSeparator = ','
         }
-        DecimalFormat("#,##0.##", symbols).apply {
+        java.text.DecimalFormat("#,##0.##", symbols).apply {
             isGroupingUsed = true
         }
     }
     val isExpense = item.type == "expense"
     val prefix = if (isExpense) "-" else "+"
-
-    val colorAndIcon: Pair<Color, ImageVector> = getCategoryColorAndIcon(item.category, item.subcategory)
-    val catColor: Color = colorAndIcon.first
-    val catIcon: ImageVector = colorAndIcon.second
-
+    val (catColor, catIcon) = getCategoryColorAndIcon(item.category, item.subcategory)
     val hasSubcategory = item.subcategory.isNotBlank() && !item.subcategory.equals(item.category, ignoreCase = true)
     val topTitle = if (hasSubcategory) item.subcategory else item.category
     val bottomTitle = if (hasSubcategory) item.category else ""
@@ -113,7 +104,7 @@ fun TransactionRowItem(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .background(DarkBg.copy(alpha = 0.6f))
-                .border(BorderStroke(1.dp, Slate800.copy(alpha = 0.5f)), RoundedCornerShape(16.dp))
+                .border(androidx.compose.foundation.BorderStroke(1.dp, Slate800.copy(alpha = 0.5f)), RoundedCornerShape(16.dp))
                 .clickable(enabled = onClick != null) { onClick?.invoke() }
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -146,7 +137,7 @@ fun TransactionRowItem(
                         fontSize = 13.sp,
                         fontWeight = if (hasSubcategory) FontWeight.Bold else FontWeight.Medium,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                     if (bottomTitle.isNotEmpty()) {
                         Text(
@@ -155,7 +146,7 @@ fun TransactionRowItem(
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Normal,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     }
                 }
