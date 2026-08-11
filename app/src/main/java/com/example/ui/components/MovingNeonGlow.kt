@@ -9,8 +9,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -35,8 +33,8 @@ import kotlin.math.sin
 fun MovingNeonGlow(
     isRecording: Boolean,
     amplitude: Float,
-    widthDp: Float,
-    heightDp: Float,
+    widthDp: Float, // Оставляем для совместимости
+    heightDp: Float, // Оставляем для совместимости
     cornerRadiusDp: Float = 28f,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
@@ -80,20 +78,21 @@ fun MovingNeonGlow(
         modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
+        // 1. Сначала рисуем холст со свечением ПОД основным контентом.
+        // matchParentSize() заставит холст принять точный размер кнопки/плашки без лишних отступов!
         Canvas(
-            modifier = Modifier
-                .width((widthDp + 36f).dp)
-                .height((heightDp + 36f).dp)
+            modifier = Modifier.matchParentSize()
         ) {
             if (glowAlpha > 0f) {
                 val outerStrokeWidth = 14f + activeAmp * 16f
                 val midStrokeWidth = 6f + activeAmp * 8f
                 val coreStrokeWidth = 2.5f + activeAmp * 2.5f
 
-                val rectLeft = (size.width - widthDp.dp.toPx()) / 2f
-                val rectTop = (size.height - heightDp.dp.toPx()) / 2f
-                val rectRight = rectLeft + widthDp.dp.toPx()
-                val rectBottom = rectTop + heightDp.dp.toPx()
+                // 2. Координаты теперь начинаются ровно от границ кнопки (от 0)
+                val rectLeft = 0f
+                val rectTop = 0f
+                val rectRight = size.width
+                val rectBottom = size.height
 
                 val capsulePath = Path().apply {
                     addRoundRect(
@@ -156,6 +155,7 @@ fun MovingNeonGlow(
             }
         }
 
+        // 3. Вызываем сам контент в конце. Он продиктует правильный размер Box'у.
         content()
     }
 }
