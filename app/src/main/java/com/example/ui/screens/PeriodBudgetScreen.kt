@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -28,11 +29,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.LocalBar
 import androidx.compose.material.icons.filled.NorthEast
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.SouthWest
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -61,7 +66,6 @@ import com.example.data.db.AiAuditEntity
 import com.example.data.db.CategoryEntity
 import com.example.data.db.TransactionEntity
 import com.example.ui.components.SwipeToRevealController
-import com.example.ui.components.TransactionRowItem
 import com.example.ui.components.VoiceInputNeonCapsule
 import com.example.ui.components.VoiceInputNeuralVisualizer
 import com.example.ui.components.dialogs.AllTransactionsDialog
