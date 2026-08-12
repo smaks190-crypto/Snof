@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import androidx.core.content.ContextCompat
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -12,82 +13,74 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.asAndroidPath
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
-import com.example.ui.theme.Emerald400
-import com.example.ui.theme.Indigo500
-import com.example.ui.theme.Rose500
-import com.example.ui.theme.Slate800
-import com.example.ui.theme.Slate900
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
 
-// Цветовые акценты под стилистику вашего приложения
-private val CapsuleBgColor = Slate900.copy(alpha = 0.92f)
-private val StatusTextColor = Rose500
+/**
+ * Цветовые константы под дизайн приложения
+ */
+private val CapsuleBgColor = Color(0xF20B0F19) // #0B0F19 с прозрачностью 95%
+private val StatusTextColor = Color(0xFFF43F5E) // Розовый акцент
 private val BorderGradientColors = listOf(
-    Emerald400,
-    Indigo500,
-    Rose500
+    Color(0xFF10B981), // Emerald
+    Color(0xFF6366F1), // Indigo
+    Color(0xFFA855F7), // Purple
+    Color(0xFFF43F5E)  // Rose
 )
 
 /**
- * Голосовая капсула с визуализатором звуковой волны реального времени
+ * Основной Composable голосовой капсулы
+ *
+ * @param modifier Модификатор внешней разметки
+ * @param isVisible Флаг видимости капсулы
+ * @param statusTextCustom Дополнительный текст статуса (например, при распознавании)
+ * @param externalAmplitudes Внешние амплитуды (если запись ведет сторонний менеджер)
+ * @param onClose Callback при нажатии на кнопку закрытия
  */
 @Composable
 fun VoiceWaveCapsule(
     modifier: Modifier = Modifier,
     isVisible: Boolean = true,
-    statusTextOverride: String? = null,
+    statusTextCustom: String? = null,
     externalAmplitudes: List<Float>? = null,
     onClose: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    var amplitudes by remember { mutableStateOf(List(32) { 0.05f }) }
+    var internalAmplitudes by remember { mutableStateOf(List(32) { 0.08f }) }
     var statusText by remember { mutableStateOf("Слушаю...") }
 
-    val activeAmplitudes = externalAmplitudes ?: amplitudes
-    val activeStatus = statusTextOverride ?: statusText
+    val amplitudesToDisplay = externalAmplitudes ?: internalAmplitudes
 
-    // Проверяем разрешения и запрашиваем чтение буфера микрофона
+    // Проверяем разрешение на запись аудио и запускаем внутренний слушатель микрофона,
+    // если не переданы внешние амплитуды
     LaunchedEffect(isVisible, externalAmplitudes) {
-        if (!isVisible || externalAmplitudes != null) return@LaunchedEffect
+        if (!isVisible) return@LaunchedEffect
+
+        if (externalAmplitudes != null) {
+            statusText = statusTextCustom ?: "Слушаю..."
+            return@LaunchedEffect
+        }
 
         val hasPermission = ContextCompat.checkSelfPermission(
             context,
@@ -95,12 +88,12 @@ fun VoiceWaveCapsule(
         ) == PackageManager.PERMISSION_GRANTED
 
         if (hasPermission) {
-            statusText = "Слушаю..."
+            statusText = statusTextCustom ?: "Слушаю..."
             startAudioRecording { newAmplitudes ->
-                amplitudes = newAmplitudes
+                internalAmplitudes = newAmplitudes
             }
         } else {
-            statusText = "Нет доступа к микрофону"
+            statusText = "Нет разрешения на микрофон"
         }
     }
 
@@ -117,60 +110,54 @@ fun VoiceWaveCapsule(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Главная капсула с неоновой рамкой
+            // Главный капсульный блок с градиентной рамкой
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .shadow(
-                        elevation = 16.dp,
-                        shape = CircleShape,
-                        ambientColor = Indigo500.copy(alpha = 0.5f),
-                        spotColor = Emerald400.copy(alpha = 0.5f)
-                    )
                     .clip(CircleShape)
                     .background(
                         brush = Brush.horizontalGradient(BorderGradientColors),
                         shape = CircleShape
                     )
-                    .padding(1.5.dp) // Неоновая окантовка
+                    .padding(1.5.dp) // Толщина неоновой рамки
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(CircleShape)
                         .background(CapsuleBgColor)
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
+                    // Текст статуса
                     Text(
-                        text = activeStatus.uppercase(),
+                        text = statusTextCustom ?: statusText,
                         color = StatusTextColor,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace,
-                        letterSpacing = 0.8.sp
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 0.5.sp
                     )
 
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
-                    // Холст волнового эквалайзера
+                    // Холст с неон-волной
                     VoiceWaveCanvas(
-                        amplitudes = activeAmplitudes,
+                        amplitudes = amplitudesToDisplay,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(24.dp)
+                            .height(28.dp)
                     )
                 }
             }
 
-            // Кнопка закрытия
+            // Кнопка закрытия (крестик)
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(44.dp)
                     .clip(CircleShape)
                     .background(CapsuleBgColor)
-                    .border(1.dp, Slate800, CircleShape)
+                    .border(1.dp, Color(0xFF1E293B), CircleShape)
                     .clickable { onClose() },
                 contentAlignment = Alignment.Center
             ) {
@@ -178,7 +165,7 @@ fun VoiceWaveCapsule(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Закрыть",
                     tint = StatusTextColor,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
@@ -186,10 +173,10 @@ fun VoiceWaveCapsule(
 }
 
 /**
- * Отрисовка живой сглаженной волны
+ * Компонент отрисовки сглаженной неоновой волны на Canvas
  */
 @Composable
-fun VoiceWaveCanvas(
+private fun VoiceWaveCanvas(
     amplitudes: List<Float>,
     modifier: Modifier = Modifier
 ) {
@@ -204,6 +191,7 @@ fun VoiceWaveCanvas(
         val wavePath = Path()
         val brush = Brush.horizontalGradient(BorderGradientColors)
 
+        // Подготовка пути волны с использованием сглаживания
         var currentX = 0f
         wavePath.moveTo(0f, centerY)
 
@@ -222,34 +210,38 @@ fun VoiceWaveCanvas(
             }
             currentX += sliceWidth
         }
+        wavePath.lineTo(width, centerY)
 
-        // Отрисовка неонового свечения (Native Android Paint)
+        // Отрисовка внешнего неонового свечения
         drawIntoCanvas { canvas ->
             val nativePaint = android.graphics.Paint().apply {
                 isAntiAlias = true
                 style = android.graphics.Paint.Style.STROKE
-                strokeWidth = 2.dp.toPx()
+                strokeWidth = 2.5.dp.toPx()
                 setShadowLayer(
-                    8.dp.toPx(),
+                    12.dp.toPx(),
                     0f,
                     0f,
                     android.graphics.Color.parseColor("#6366F1")
                 )
             }
+
             canvas.nativeCanvas.drawPath(wavePath.asAndroidPath(), nativePaint)
         }
 
-        // Основная линия волны
+        // Отрисовка основной градиентной линии волны
         drawPath(
             path = wavePath,
             brush = brush,
-            style = Stroke(width = 2.dp.toPx())
+            style = androidx.compose.ui.graphics.drawscope.Stroke(
+                width = 2.5.dp.toPx()
+            )
         )
     }
 }
 
 /**
- * Запись буфера звука и вычисление амплитуды
+ * Вспомогательная функция для считывания громкости с микрофона
  */
 private suspend fun startAudioRecording(
     onAmplitudeChange: (List<Float>) -> Unit
@@ -259,11 +251,8 @@ private suspend fun startAudioRecording(
     val audioFormat = AudioFormat.ENCODING_PCM_16BIT
     val minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
 
-    if (minBufferSize <= 0) return@withContext
-
-    var audioRecord: AudioRecord? = null
     try {
-        audioRecord = AudioRecord(
+        val audioRecord = AudioRecord(
             MediaRecorder.AudioSource.MIC,
             sampleRate,
             channelConfig,
@@ -275,9 +264,9 @@ private suspend fun startAudioRecording(
         audioRecord.startRecording()
 
         val pointsCount = 32
-        val localAmplitudes = FloatArray(pointsCount) { 0.05f }
+        val localAmplitudes = FloatArray(pointsCount) { 0.08f }
 
-        while (isActive && audioRecord.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
+        while (isActive) {
             val readSize = audioRecord.read(buffer, 0, buffer.size)
             if (readSize > 0) {
                 var maxVal = 0
@@ -286,25 +275,22 @@ private suspend fun startAudioRecording(
                     if (absVal > maxVal) maxVal = absVal
                 }
 
-                val normalizedValue = (maxVal / 32768f) * 2.2f
+                val normalizedValue = (maxVal / 32768f) * 2.0f // Повышенная чувствительность
 
                 for (i in 0 until pointsCount - 1) {
                     localAmplitudes[i] = localAmplitudes[i + 1]
                 }
                 localAmplitudes[pointsCount - 1] = normalizedValue.coerceIn(0.08f, 1f)
 
-                val currentList = localAmplitudes.toList()
                 withContext(Dispatchers.Main) {
-                    onAmplitudeChange(currentList)
+                    onAmplitudeChange(localAmplitudes.toList())
                 }
             }
         }
+
+        audioRecord.stop()
+        audioRecord.release()
     } catch (e: Exception) {
         e.printStackTrace()
-    } finally {
-        try {
-            audioRecord?.stop()
-            audioRecord?.release()
-        } catch (_: Exception) {}
     }
 }
